@@ -11,12 +11,14 @@ import { MessageDto, GetMessageDto } from './models/message.dto';
 import { ObjectID } from 'mongodb';
 import { createRichContent } from './utils/message.helper';
 import { MessageGroupedByConversationOutput } from '../conversation/models/messagesFilterInput';
+import { Tag } from '../conversation/models/CreateChatConversation.dto';
 
 @Injectable()
 export class MessageData {
   constructor(
     @InjectModel(ChatMessageModel.name)
     protected chatMessageModel: Model<ChatMessageDocument>,
+    
   ) {}
 
   async create(
@@ -29,6 +31,7 @@ export class MessageData {
     chatMessage.conversationId = data.conversationId;
     chatMessage.created = new Date();
     chatMessage.deleted = false;
+    chatMessage.tags = data.tags
 
     createRichContent(data, chatMessage);
 
@@ -42,6 +45,22 @@ export class MessageData {
     return chatMessageToObject(message);
   }
 
+  async updateTags(
+    messageId: ObjectID,
+    tags: Tag[],
+  ): Promise<ChatMessageModel> {
+    const filterBy = { _id: messageId };
+
+    const result = await this.chatMessageModel.findOneAndUpdate(
+      filterBy,
+      { $set: { tags } },
+      { new: true },
+    );
+    if (!result) throw new Error('Could not update tags on message');
+    const message = chatMessageToObject(result);
+
+    return message;
+  }
 
   async getChatConversationMessages(
     data: GetMessageDto,
